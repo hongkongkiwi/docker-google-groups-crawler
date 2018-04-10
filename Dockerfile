@@ -16,6 +16,7 @@ ENV GOOGLE_GROUP_ORG=''
 ENV UPDATE_MESSAGE_COUNT=50
 ENV FORCE_REFRESH='false'
 ENV DOWNLOAD_ATTACHMENTS='true'
+ENV PULL_ON_BOOT='true'
 ENV TZ='Asia/Hong_Kong'
 
 VOLUME ["/data", "/config"]
@@ -24,6 +25,7 @@ VOLUME ["/data", "/config"]
 WORKDIR /data
 
 COPY run.sh /run.sh
+COPY start-container.sh /start-container.sh
 
 # install dependencies
 RUN apk update \
@@ -53,6 +55,7 @@ RUN apk update \
 
 # Create expected directories
  && chmod +x /run.sh \
+ && chmod +x /start-container.sh \
  && echo "${CRON_SCHEDULE} /run.sh" > /etc/crontab \
 # clean up dependencies
  && apk del --purge \
@@ -65,4 +68,4 @@ COPY hook.sh /google-group-crawler/hook.sh
 
 ENTRYPOINT [ "/sbin/tini", "--" ]
 
-CMD [ "/usr/local/bin/supercronic", "/etc/crontab" ]
+CMD [ "/start-container.sh" ]
