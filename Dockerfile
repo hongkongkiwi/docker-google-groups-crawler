@@ -25,7 +25,7 @@ VOLUME ["/data", "/config"]
 WORKDIR /data
 
 COPY run.sh /run.sh
-COPY start-container.sh /start-container.sh
+COPY start-container.sh "/start-container.sh"
 
 # install dependencies
 RUN apk update \
