@@ -1,0 +1,41 @@
+#!/bin/bash
+
+AMQP_SCRIPT="/usr/bin/send-amqp-message"
+GDRIVE_SCRIPT="/usr/bin/upload-google-drive"
+LDB="/usr/local/bin/ldb"
+LEVELDB_DB="/data/filesdb"
+FILENAME="$1"
+BASE_FILENAME=`dirname "$FILENAME"`
+FILESIZE=`stat --printf="%s" "$FILENAME"`
+
+if [[ ! -f "$FILENAME" ]]; then
+  echo "File does not exist!"
+  echo "$FILENAME"
+  exit 1
+fi
+
+"$LDB" "${LEVELDB_DB}" --create --size
+SAVED_FILESIZE=`"$LDB" "${LEVELDB_DB}" get "$BASE_FILENAME" 2>/dev/null`
+if [[ "$FILESIZE" == "$SAVED_FILESIZE" ]]; then
+  echo "File already sent. Skipping"
+  echo "$BASE_FILENAME"
+  exit 0
+fi
+
+echo "New file found: $FILENAME"
+
+MSG="local|${FILENAME}"
+if [[ "${RCLONE_UPLOAD}" == "true" ]]; then
+  "$GDRIVE_SCRIPT" "$FILENAME" "$BASE_FILENAME"
+  MSG="google|${BASE_FILENAME}"
+  echo "File uploaded to Google Drive: $BASE_FILENAME"
+fi
+
+if [[ "${AMQP_ENABLED}" == "true" ]]; then
+  #"$AMQP_SCRIPT" "$MSG"
+  echo "$AMQP_SCRIPT" "$MSG"
+  echo "File sent to AMQP queue"
+fi
+
+"$LDB" "${LEVELDB_DB}" put "$BASE_FILENAME" "$FILESIZE"
+echo "File Successfully Processed"

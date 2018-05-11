@@ -1,0 +1,36 @@
+#!/bin/bash
+
+RCLONE_LOCAL="local"
+RCLONE_CONFIG_FILE="/config/rclone.conf"
+FILENAME="$1"
+UPLOADED_FILENAME="$2"
+
+if [ -z ${RCLONE_REMOTE+x} ]; then
+  echo "RCLONE_REMOTE variable is not set"
+  exit 1
+fi
+
+if [[ "${UPLOADED_FILENAME}" == "" ]]; then
+  BASE_FILENAME=`basename "$FILENAME"`
+  REMOTE="${RCLONE_REMOTE}/${BASE_FILENAME}"
+else
+  REMOTE="${RCLONE_REMOTE}/${UPLOADED_FILENAME}"
+fi
+
+if [[ ! -f "$FILENAME" ]]; then
+   echo "File does not exist!"
+   echo "$FILENAME"
+   exit 1
+fi
+
+if [[ ! -f "${RCLONE_CONFIG_FILE}" ]]; then
+   echo "rclone config file does not exist!"
+   echo "${RCLONE_CONFIG_FILE}"
+   exit 1
+fi
+
+rclone \
+	--config "${RCLONE_CONFIG_FILE}" \
+	copyto \
+	"${RCLONE_LOCAL}:${FILENAME}" \
+	"$REMOTE"

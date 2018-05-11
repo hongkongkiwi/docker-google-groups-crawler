@@ -1,7 +1,7 @@
 #!/bin/sh -e
 exec 2>&1
-exec /usr/bin/watchmedo shell-command \
-    --patterns="*.xls" \
+exec "/usr/bin/watchmedo" shell-command \
+    --patterns="${WATCH_FILE_PATTERN}" \
     --recursive \
-    --command='echo "${watch_src_path}"' \
+    --command='"/usr/bin/file-downloaded-hook" "${watch_src_path}"' \
     "/data/${GOOGLE_GROUP_NAME}"

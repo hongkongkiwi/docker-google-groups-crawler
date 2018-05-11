@@ -19,7 +19,7 @@ __wget_hook() {
         --no-nameless \
         --name-by-type \
         --overwrite \
-        -p "xls" \
+        #-p "xls" \
         -d "${ATTACHMENTS_DIR}/${DIR_PREFIX}" \
         -i "$1" \
         -q
