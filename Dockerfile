@@ -50,7 +50,8 @@ VOLUME ["/data", "/config"]
 # We need to set work directory as this is where the crawler will save the data
 WORKDIR /data
 
-COPY run.sh /run.sh
+COPY scripts/sync-google-group "/usr/bin/sync-google-group"
+COPY scripts/send-amqp-message "/usr/bin/send-amqp-message"
 COPY start-container.sh "/start-container.sh"
 
 # install dependencies
@@ -108,13 +109,15 @@ RUN echo "Installing Runit" \
  && cd /data
 COPY runit/ "${SERVICE_AVAILABLE_DIR}/"
 RUN ln -s "${SERVICE_AVAILABLE_DIR}/supercronic" "${SERVICE_ENABLED_DIR}" \
- && mkdir "/var/log/supercronic"
+ && ln -s "${SERVICE_AVAILABLE_DIR}/watchdog" "${SERVICE_ENABLED_DIR}" \
+ && mkdir -p "/var/log/supercronic" "/var/log/watchdog"
 
 # Create expected directories
 RUN echo "Setting Things Up" \
- && chmod +x /run.sh \
+ && chmod +x "/usr/bin/send-amqp-message" \
+ && chmod +x "/usr/bin/sync-google-group" \
  && chmod +x /start-container.sh \
- && echo "${CRON_SCHEDULE} /run.sh" > /etc/crontab
+ && echo "${CRON_SCHEDULE} /usr/bin/sync-google-group" > /etc/crontab
 
 # clean up dependencies
 RUN echo "Cleaning Up" \

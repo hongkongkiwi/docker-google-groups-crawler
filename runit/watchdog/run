@@ -1,0 +1,7 @@
+#!/bin/sh -e
+exec 2>&1
+exec /usr/bin/watchmedo shell-command \
+    --patterns="*.xls" \
+    --recursive \
+    --command='echo "${watch_src_path}"' \
+    "/data/${GOOGLE_GROUP_NAME}"
