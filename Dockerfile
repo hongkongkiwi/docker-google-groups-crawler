@@ -10,21 +10,27 @@ LABEL org.label-schema.name="google-group-crawler" \
 # This is some stuff required for runit to work
 STOPSIGNAL SIGCONT
 
-ENV SERVICE_AVAILABLE_DIR="/etc/sv" \
-    SERVICE_ENABLED_DIR="/service" \
-    SVDIR="${SERVICE_ENABLED_DIR}" \
-    SVWAIT=7
+ARG SERVICE_AVAILABLE_DIR="/etc/sv"
+ARG SERVICE_ENABLED_DIR="/service"
+ARG SVDIR="${SERVICE_ENABLED_DIR}"
+ARG SVWAIT=7
 
-ENV SUPERCRONIC_URL='https://github.com/aptible/supercronic/releases/download/v0.1.5/supercronic-linux-amd64' \
-    SUPERCRONIC='supercronic-linux-amd64' \
-    SUPERCRONIC_SHA1SUM='9aeb41e00cc7b71d30d33c57a2333f2c2581a201' \
-    RUNIT_INSTALL_SCRIPT='https://rawgit.com/dockage/runit-scripts/master/scripts/installer' \
-    GOOGLE_CRAWLER_REPO='https://github.com/icy/google-group-crawler.git' \
-    #QUICK_LOCK_REPO='https://raw.githubusercontent.com/oresoftware/quicklock/master/install.sh' \
-    QUICK_LOCK_REPO='https://raw.githubusercontent.com/hongkongkiwi/quicklock/master/install.sh' \
-    RCLONE_URL='https://downloads.rclone.org/rclone-current-linux-arm64.zip' \
-    LEVELDB_REPO="https://github.com/0x00a/ldb.git" \
-    BLOG_URL="https://raw.githubusercontent.com/idelsink/b-log/master/b-log.sh"
+ARG OS="linux"
+ARG ARCH="amd64"
+
+# URLS for stuff to install during build
+ARG SUPERCRONIC_VER="0.1.5"
+ARG SUPERCRONIC_URL="https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VER}/supercronic-${OS}-${ARCH}"
+ARG SUPERCRONIC="supercronic-${OS}-${ARCH}"
+ARG SUPERCRONIC_SHA1SUM='9aeb41e00cc7b71d30d33c57a2333f2c2581a201'
+ARG RUNIT_INSTALL_SCRIPT='https://rawgit.com/dockage/runit-scripts/master/scripts/installer'
+ARG GOOGLE_CRAWLER_REPO='https://github.com/icy/google-group-crawler.git'
+ARG QUICK_LOCK_REPO='https://raw.githubusercontent.com/oresoftware/quicklock/master/install.sh'
+    #QUICK_LOCK_REPO='https://raw.githubusercontent.com/hongkongkiwi/quicklock/master/install.sh'
+ARG RCLONE_VER="current"
+ARG RCLONE_URL="https://downloads.rclone.org/rclone-${RCLONE_VER}-${OS}-${ARCH}.zip"
+ARG LEVELDB_REPO='https://github.com/0x00a/ldb.git'
+ARG BLOG_URL='https://raw.githubusercontent.com/idelsink/b-log/master/b-log.sh'
 
 # Some options that can be configured
 ENV CRON_SCHEDULE='*/30 * * * *'
@@ -54,7 +60,7 @@ ENV NPM_CONFIG_LOGLEVEL='error'
 # Upload files we find to rclone remote (e.g. Google Groups)
 ENV RCLONE_UPLOAD='true'
 # Which rclone remote to upload to
-ENV RCLONE_REMOTE='Google Drive:uploadtest'
+ENV RCLONE_REMOTE='Google Drive'
 
 # Send files found to AQMP server?
 ENV AMQP_ENABLED='false'
@@ -64,7 +70,7 @@ ENV AMQP_EXCHANGE='google_groups'
 ENV AMQP_QUEUE='google_groups_changes'
 
 # Path to Python (required for some NPM builds)
-ENV PYTHON="`/usr/bin`/python"
+ENV PYTHON="/usr/bin/python"
 # Path to b-log.sh which is downloaded for bash logging
 ENV BLOG="/usr/local/include/b-log.sh"
 
@@ -120,7 +126,7 @@ RUN echo "Installing Supercronic" \
  && echo "${SUPERCRONIC_SHA1SUM} ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
  && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
- && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+ && ln -s "/usr/local/bin/${SUPERCRONIC}" "/usr/local/bin/supercronic"
 
 # Download Google Group Crawler bash scripts
 RUN echo "Installing Google Group Crawler" \
@@ -156,14 +162,14 @@ RUN echo "Installing rclone" \
  && cd /tmp \
  && wget -q "${RCLONE_URL}" \
  && unzip -qq /tmp/rclone-*.zip \
- && mv /tmp/rclone-*-linux-*/rclone /usr/local/bin \
+ && mv /tmp/rclone-*-${OS}-*/rclone /usr/local/bin \
  && mkdir -p /var/lock \
  && touch /var/lock/rclone.lock \
  && cd /data
 
 # LevelDB for Shell
 RUN echo "Installing LevelDB" \
- && mkdir -p /usr/share/man/man1 \
+ && mkdir -p "/usr/share/man/man1" \
  && git clone -q "${LEVELDB_REPO}" /tmp/ldb \
  && cd /tmp/ldb \
  && make && make install
@@ -175,11 +181,7 @@ RUN echo "Installing Additional Shell Libraries" \
 
 # Create expected directories
 RUN echo "Setting Things Up" \
- && chmod +x "/usr/local/bin/file-downloaded-hook" \
- && chmod +x "/usr/local/bin/send-amqp-message" \
- && chmod +x "/usr/local/bin/sync-google-group" \
- && chmod +x "/usr/local/bin/upload-google-drive" \
- && chmod +x "/usr/local/bin/remove-file-from-db" \
+ && chmod +x /usr/local/bin/* \
  && chmod +x "/start-container.sh" \
  && echo "${CRON_SCHEDULE} /usr/local/bin/sync-google-group" > /etc/crontab
 
@@ -191,7 +193,7 @@ RUN echo "Cleaning Up" \
  && rm -rf ~/.cache/pip \
  && rm -rf /runit_installer /dockage-runit-scripts-*
 
-COPY hook.sh /google-group-crawler/hook.sh
+COPY hook.sh "$HOOK_FILE"
 
 WORKDIR /data
 
