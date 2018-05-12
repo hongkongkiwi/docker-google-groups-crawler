@@ -8,7 +8,7 @@ FILE_DOWNLOADED_HOOK_LOG=${FILE_DOWNLOADED_HOOK_LOG:-"/var/log/file-downloaded.l
 # Import the BLOG library
 [ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }
 # Here we are matching the BLOG format to match the format of rclone
-B_LOG_DEFAULT_TEMPLATE="@19:1@ @5:2@ : @5@"
+B_LOG_DEFAULT_TEMPLATE="@19:1@ @6:2@ : @5@"
 LOG_LEVELS=(
     ${LOG_LEVEL_FATAL}  "FATAL"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[41;37m" "\e[0m"
     ${LOG_LEVEL_ERROR}  "ERROR"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;31m" "\e[0m"
@@ -32,7 +32,7 @@ LEVELDB_DB=${LEVELDB_DB:-"/data/filesdb"}
 
 [ "$FILENAME" != "" ] || { FATAL "Must pass a filename.  Aborting."; exit 1; }
 [ -f "$FILENAME" ] || { FATAL "Filename does not exist '$FILENAME'.  Aborting."; exit 1; }
-BASE_FILENAME=`dirname "$FILENAME"`
+BASE_FILENAME=`basename "$FILENAME"`
 SHA1_FILEHASH=`sha1sum "$FILENAME" | cut -f1 -d' '`
 
 # Make sure that our LevelDB exists
@@ -43,16 +43,20 @@ FILESIZE=`stat --printf="%s" "$FILENAME"`
 
 # If have a filesize and it matches our current filesize then skip
 [ "$FILESIZE" == "$SAVED_FILESIZE" ] && { NOTICE "File already sent '$BASE_FILENAME'.  Ignoring."; exit 0; }
-NOTICE "New file found: $BASE_FILENAME"
+NOTICE "Discovered New File: $BASE_FILENAME"
 
 METADATA=""
 if [[ "${RCLONE_UPLOAD}" == "true" ]]; then
+  INFO "Uploading file with rclone script"
   "$GDRIVE_SCRIPT" "$FILENAME" "$BASE_FILENAME"
-  METADATA='type=google_drive'
+  METADATA="type=google_drive,remote_filename=/${BASE_FILENAME},filesize=${FILESIZE}"
+else
+  METADATA='type=file,filesize=${FILESIZE}'
 fi
 
 if [[ "${AMQP_ENABLED}" == "true" ]]; then
-  "$AMQP_SCRIPT" "$MSG" "$METADATA"
+  INFO "Sending message about file to AMQP"
+  "${AMQP_SCRIPT}" "${FILENAME}" "${METADATA}"
 fi
 
 "$LDB" "${LEVELDB_DB}" put "$SHA1_FILEHASH" "$FILESIZE"

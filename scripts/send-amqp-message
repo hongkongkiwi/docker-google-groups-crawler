@@ -8,7 +8,7 @@ AMQP_PUBLISH_LOG=${AMQP_PUBLISH_LOG:-"/var/log/amqp-publish.log"}
 # Import the BLOG library
 [ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }
 # Here we are matching the BLOG format to match the format of rclone
-B_LOG_DEFAULT_TEMPLATE="@19:1@ @5:2@ : @5@"
+B_LOG_DEFAULT_TEMPLATE="@19:1@ @6:2@ : @5@"
 LOG_LEVELS=(
     ${LOG_LEVEL_FATAL}  "FATAL"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[41;37m" "\e[0m"
     ${LOG_LEVEL_ERROR}  "ERROR"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;31m" "\e[0m"
