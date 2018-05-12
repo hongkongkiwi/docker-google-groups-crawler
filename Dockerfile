@@ -74,7 +74,7 @@ ENV PYTHON="/usr/bin/python"
 # Path to b-log.sh which is downloaded for bash logging
 ENV BLOG="/usr/local/include/b-log.sh"
 
-VOLUME ["/data", "/config", "/var/log"]
+VOLUME ["/data", "/config"]
 
 # We need to set work directory as this is where the crawler will save the data
 WORKDIR /data
