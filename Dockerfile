@@ -81,7 +81,6 @@ WORKDIR /data
 
 # Copy all our awesome scripts to the bin
 COPY scripts/* /usr/local/bin/
-COPY start-container.sh "/start-container.sh"
 
 # install dependencies
 RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
@@ -154,6 +153,7 @@ RUN echo "Installing Runit" \
 COPY runit/ "${SERVICE_AVAILABLE_DIR}/"
 RUN ln -s "${SERVICE_AVAILABLE_DIR}/supercronic" "${SERVICE_ENABLED_DIR}" \
  && ln -s "${SERVICE_AVAILABLE_DIR}/watchdog" "${SERVICE_ENABLED_DIR}" \
+ && ln -s "${SERVICE_AVAILABLE_DIR}/sync-google-group-oneshot" "${SERVICE_ENABLED_DIR}" \
  && mkdir -p "/var/log/supercronic" "/var/log/watchdog"
 
 # Install rclone
@@ -182,7 +182,6 @@ RUN echo "Installing Additional Shell Libraries" \
 # Create expected directories
 RUN echo "Setting Things Up" \
  && chmod +x /usr/local/bin/* \
- && chmod +x "/start-container.sh" \
  && echo "${CRON_SCHEDULE} /usr/local/bin/sync-google-group" > /etc/crontab
 
 # clean up dependencies

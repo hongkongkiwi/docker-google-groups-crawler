@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+if [[ "$PULL_ON_BOOT" == 'true' ]]; then
+  "/usr/local/bin/sync-google-group"
+fi
+exec pause
