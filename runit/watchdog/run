@@ -1,7 +1,10 @@
 #!/bin/sh -e
+
+FILE_DOWNLOADED_HOOK="/usr/local/bin/file-downloaded-hook"
+
 exec 2>&1
 exec "/usr/bin/watchmedo" shell-command \
     --patterns="${WATCH_FILE_PATTERN}" \
     --recursive \
-    --command='"/usr/bin/file-downloaded-hook" "${watch_src_path}"' \
+    --command="${FILE_DOWNLOADED_HOOK} ${watch_src_path}" \
     "/data/${GOOGLE_GROUP_NAME}"

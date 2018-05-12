@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# global parameters
+set -o pipefail # prevents errors in a pipeline from being masked
+
+FILENAME="$1"
+
+LDB=${LDB:-"/usr/local/bin/ldb"}
+LEVELDB_DB=${LEVELDB_DB:-"/data/filesdb"}
+BASE_FILENAME=`dirname "$FILENAME"`
+
+[ "$FILENAME" != "" ] || { echo "Must pass a filename.  Aborting."; exit 1; }
+[ -f "$FILENAME" ] || { echo "Filename does not exist '$FILENAME'.  Aborting."; exit 1; }
+SHA1_FILEHASH=`sha1sum "$FILENAME" | cut -f1 -d' '`
+
+# Make sure that our LevelDB exists
+[ `"$LDB" "${LEVELDB_DB}" --create --size` ] || { echo "Could not create LevelDB '$LEVELDB_DB'.  Aborting."; exit 1; }
+SAVED_FILESIZE=`"$LDB" "${LEVELDB_DB}" get "$SHA1_FILEHASH" 2>/dev/null`
+
+if [[ "$SAVED_FILESIZE" != "" ]]; then
+  "$LDB" "${LEVELDB_DB}" del "$SHA1_FILEHASH"
+  echo "File Successfully Deleted from DB!"
+else
+  echo "File not in the DB!"
+fi

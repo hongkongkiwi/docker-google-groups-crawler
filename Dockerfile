@@ -64,7 +64,7 @@ ENV AMQP_EXCHANGE='google_groups'
 ENV AMQP_QUEUE='google_groups_changes'
 
 # Path to Python (required for some NPM builds)
-ENV PYTHON="/usr/bin/python"
+ENV PYTHON="`/usr/bin`/python"
 # Path to b-log.sh which is downloaded for bash logging
 ENV BLOG="/usr/local/include/b-log.sh"
 
@@ -74,7 +74,7 @@ VOLUME ["/data", "/config", "/var/logs"]
 WORKDIR /data
 
 # Copy all our awesome scripts to the bin
-COPY scripts/* /usr/bin/
+COPY scripts/* /usr/local/bin/
 COPY start-container.sh "/start-container.sh"
 
 # install dependencies
@@ -156,7 +156,7 @@ RUN echo "Installing rclone" \
  && cd /tmp \
  && wget -q "${RCLONE_URL}" \
  && unzip -qq /tmp/rclone-*.zip \
- && mv /tmp/rclone-*-linux-*/rclone /usr/bin \
+ && mv /tmp/rclone-*-linux-*/rclone /usr/local/bin \
  && mkdir -p /var/lock \
  && touch /var/lock/rclone.lock \
  && cd /data
@@ -170,14 +170,18 @@ RUN echo "Installing LevelDB" \
 
 # Installing Logging Libraries
 RUN echo "Installing Additional Shell Libraries" \
- && wget -q "${BLOG_URL}" "/usr/local/include/b-log.sh"
+ && mkdir -p "/usr/local/include" \
+ && wget -q -O "${BLOG}" "${BLOG_URL}"
 
 # Create expected directories
 RUN echo "Setting Things Up" \
- && chmod +x "/usr/bin/send-amqp-message" \
- && chmod +x "/usr/bin/sync-google-group" \
- && chmod +x /start-container.sh \
- && echo "${CRON_SCHEDULE} /usr/bin/sync-google-group" > /etc/crontab
+ && chmod +x "/usr/local/bin/file-downloaded-hook" \
+ && chmod +x "/usr/local/bin/send-amqp-message" \
+ && chmod +x "/usr/local/bin/sync-google-group" \
+ && chmod +x "/usr/local/bin/upload-google-drive" \
+ && chmod +x "/usr/local/bin/remove-file-from-db" \
+ && chmod +x "/start-container.sh" \
+ && echo "${CRON_SCHEDULE} /usr/local/bin/sync-google-group" > /etc/crontab
 
 # clean up dependencies
 RUN echo "Cleaning Up" \

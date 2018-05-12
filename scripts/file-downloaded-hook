@@ -3,7 +3,7 @@
 # global parameters
 set -o pipefail # prevents errors in a pipeline from being masked
 
-FILE_DOWNLOADED_HOOK_LOG=${FILE_DOWNLOADED_HOOK_LOG:="/var/log/file-downloaded.log"}
+FILE_DOWNLOADED_HOOK_LOG=${FILE_DOWNLOADED_HOOK_LOG:-"/var/log/file-downloaded.log"}
 
 # Import the BLOG library
 [ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }
@@ -25,15 +25,15 @@ LOG_LEVEL_ALL
 
 FILENAME="$1"
 
-AMQP_SCRIPT=${AMQP_SCRIPT:-"/usr/bin/send-amqp-message"}
-GDRIVE_SCRIPT=${GDRIVE_SCRIPT:-"/usr/bin/upload-google-drive"}
+AMQP_SCRIPT=${AMQP_SCRIPT:-"/usr/local/bin/send-amqp-message"}
+GDRIVE_SCRIPT=${GDRIVE_SCRIPT:-"/usr/local/bin/upload-google-drive"}
 LDB=${LDB:-"/usr/local/bin/ldb"}
 LEVELDB_DB=${LEVELDB_DB:-"/data/filesdb"}
-BASE_FILENAME=`dirname "$FILENAME"`
-SHA1_FILEHASH=`sha1sum "$FILENAME" | cut -f1 -d' '`
 
 [ "$FILENAME" != "" ] || { FATAL "Must pass a filename.  Aborting."; exit 1; }
 [ -f "$FILENAME" ] || { FATAL "Filename does not exist '$FILENAME'.  Aborting."; exit 1; }
+BASE_FILENAME=`dirname "$FILENAME"`
+SHA1_FILEHASH=`sha1sum "$FILENAME" | cut -f1 -d' '`
 
 # Make sure that our LevelDB exists
 [ `"$LDB" "${LEVELDB_DB}" --create --size` ] || { FATAL "Could not create LevelDB '$LEVELDB_DB'.  Aborting."; exit 1; }

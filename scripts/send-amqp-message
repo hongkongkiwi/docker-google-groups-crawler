@@ -3,7 +3,7 @@
 # global parameters
 set -o pipefail # prevents errors in a pipeline from being masked
 
-AMQP_PUBLISH_LOG=${AMQP_PUBLISH_LOG:="/var/log/amqp-publish.log"}
+AMQP_PUBLISH_LOG=${AMQP_PUBLISH_LOG:-"/var/log/amqp-publish.log"}
 
 # Import the BLOG library
 [ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }

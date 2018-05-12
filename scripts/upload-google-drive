@@ -2,7 +2,7 @@
 
 # global parameters
 set -o pipefail # prevents errors in a pipeline from being masked
-GOOGLE_DRIVE_UPLOAD_LOG_FILE=${GOOGLE_DRIVE_UPLOAD_LOG_FILE:="/var/log/google-drive-upload.log"}
+GOOGLE_DRIVE_UPLOAD_LOG_FILE=${GOOGLE_DRIVE_UPLOAD_LOG_FILE:-"/var/log/google-drive-upload.log"}
 
 # Import the BLOG library
 [ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }
