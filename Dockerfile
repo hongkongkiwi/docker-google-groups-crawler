@@ -17,45 +17,63 @@ ENV SERVICE_AVAILABLE_DIR="/etc/sv" \
 
 ENV SUPERCRONIC_URL='https://github.com/aptible/supercronic/releases/download/v0.1.5/supercronic-linux-amd64' \
     SUPERCRONIC='supercronic-linux-amd64' \
-    SUPERCRONIC_SHA1SUM='9aeb41e00cc7b71d30d33c57a2333f2c2581a201'
-ENV RUNIT_INSTALL_SCRIPT='https://rawgit.com/dockage/runit-scripts/master/scripts/installer'
-ENV GOOGLE_CRAWLER_REPO='https://github.com/icy/google-group-crawler.git'
-#ENV QUICK_LOCK_REPO='https://raw.githubusercontent.com/oresoftware/quicklock/master/install.sh'
-ENV QUICK_LOCK_REPO='https://raw.githubusercontent.com/hongkongkiwi/quicklock/master/install.sh'
-ENV RCLONE_URL='https://downloads.rclone.org/rclone-current-linux-arm64.zip'
-ENV LEVELDB_REPO="https://github.com/0x00a/ldb.git"
+    SUPERCRONIC_SHA1SUM='9aeb41e00cc7b71d30d33c57a2333f2c2581a201' \
+    RUNIT_INSTALL_SCRIPT='https://rawgit.com/dockage/runit-scripts/master/scripts/installer' \
+    GOOGLE_CRAWLER_REPO='https://github.com/icy/google-group-crawler.git' \
+    #QUICK_LOCK_REPO='https://raw.githubusercontent.com/oresoftware/quicklock/master/install.sh' \
+    QUICK_LOCK_REPO='https://raw.githubusercontent.com/hongkongkiwi/quicklock/master/install.sh' \
+    RCLONE_URL='https://downloads.rclone.org/rclone-current-linux-arm64.zip' \
+    LEVELDB_REPO="https://github.com/0x00a/ldb.git" \
+    BLOG_URL="https://raw.githubusercontent.com/idelsink/b-log/master/b-log.sh"
 
 # Some options that can be configured
 ENV CRON_SCHEDULE='*/30 * * * *'
+# Which files do we want to trigger our hook on
 ENV WATCH_FILE_PATTERN='*.xls'
+# Where we can find the cookies file for authing to google groups
 ENV COOKIES_FILE='/config/cookies.txt'
+# You shouldn't need to change this unless you want to change the hook script
 ENV HOOK_FILE='/google-group-crawler/hook.sh'
 ENV GOOGLE_GROUP_NAME=''
+# This is important when dealing with Google Group in organisation
 ENV GOOGLE_GROUP_ORG=''
+# How many messages to get when updating via RSS
 ENV UPDATE_MESSAGE_COUNT=50
+# Set this to force pull down all messages
 ENV FORCE_REFRESH='false'
+# If you only want messages you can change this
 ENV DOWNLOAD_ATTACHMENTS='true'
+# This will produce a lot of noise and is not recommended unless you need a full pull
 ENV PULL_ON_BOOT='true'
+# Mostly useful for the cron script
 ENV TZ='Asia/Hong_Kong'
+
+# Ignore the noisy NPM installs
 ENV NPM_CONFIG_LOGLEVEL='error'
 
+# Upload files we find to rclone remote (e.g. Google Groups)
 ENV RCLONE_UPLOAD='true'
+# Which rclone remote to upload to
 ENV RCLONE_REMOTE='Google Drive:uploadtest'
 
+# Send files found to AQMP server?
 ENV AMQP_ENABLED='false'
-ENV AMQP_TOPIC='google_groups_changes'
-ENV AMQP_SERVER=''
-ENV AMQP_USER=''
-ENV AMQP_PASS=''
-ENV AMQP_VHOST=''
+# AMQP Server info
+ENV AMQP_URL=''
+ENV AMQP_EXCHANGE='google_groups'
+ENV AMQP_QUEUE='google_groups_changes'
 
+# Path to Python (required for some NPM builds)
 ENV PYTHON="/usr/bin/python"
+# Path to b-log.sh which is downloaded for bash logging
+ENV BLOG="/usr/local/include/b-log.sh"
 
-VOLUME ["/data", "/config"]
+VOLUME ["/data", "/config", "/var/logs"]
 
 # We need to set work directory as this is where the crawler will save the data
 WORKDIR /data
 
+# Copy all our awesome scripts to the bin
 COPY scripts/* /usr/bin/
 COPY start-container.sh "/start-container.sh"
 
@@ -73,10 +91,11 @@ RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >>
         curl \
         git \
         tzdata \
-        python \
+        py2-pip \
         make g++ snappy-dev gcc \
  && apk add cmake@edge \
  && apk add --no-cache \
+        netcat-openbsd \
         snappy \
         runit \
         ca-certificates \
@@ -85,6 +104,7 @@ RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >>
         rabbitmq-c-utils \
         python3 \
         python3-dev \
+        python \
         yaml-dev \
         musl-dev \
         ripmime@edgecommunity \
@@ -114,7 +134,10 @@ RUN echo "Installing Quicklook Repo" \
 # Upgrade PIP
 RUN echo "Upgrading Pip & Installing Watchdog" \
  && pip3 install -q --no-cache-dir --upgrade pip \
- && pip3 install -q --no-cache-dir watchdog
+ && pip3 install -q --no-cache-dir watchdog \
+ && pip2 install -q --no-cache-dir crudini
+
+ # Install Runit
 RUN echo "Installing Runit" \
  && cd / \
  && curl --output /runit_installer -fsSLO "$RUNIT_INSTALL_SCRIPT" \
@@ -144,6 +167,10 @@ RUN echo "Installing LevelDB" \
  && git clone -q "${LEVELDB_REPO}" /tmp/ldb \
  && cd /tmp/ldb \
  && make && make install
+
+# Installing Logging Libraries
+RUN echo "Installing Additional Shell Libraries" \
+ && wget -q "${BLOG_URL}" "/usr/local/include/b-log.sh"
 
 # Create expected directories
 RUN echo "Setting Things Up" \

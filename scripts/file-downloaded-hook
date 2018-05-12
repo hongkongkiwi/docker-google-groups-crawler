@@ -1,41 +1,58 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-AMQP_SCRIPT="/usr/bin/send-amqp-message"
-GDRIVE_SCRIPT="/usr/bin/upload-google-drive"
-LDB="/usr/local/bin/ldb"
-LEVELDB_DB="/data/filesdb"
+# global parameters
+set -o pipefail # prevents errors in a pipeline from being masked
+
+FILE_DOWNLOADED_HOOK_LOG=${FILE_DOWNLOADED_HOOK_LOG:="/var/log/file-downloaded.log"}
+
+# Import the BLOG library
+[ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }
+# Here we are matching the BLOG format to match the format of rclone
+B_LOG_DEFAULT_TEMPLATE="@19:1@ @5:2@ : @5@"
+LOG_LEVELS=(
+    ${LOG_LEVEL_FATAL}  "FATAL"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[41;37m" "\e[0m"
+    ${LOG_LEVEL_ERROR}  "ERROR"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;31m" "\e[0m"
+    ${LOG_LEVEL_WARN}   "WARN"   "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;33m" "\e[0m"
+    ${LOG_LEVEL_NOTICE} "NOTICE" "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;32m" "\e[0m"
+    ${LOG_LEVEL_INFO}   "INFO"   "${B_LOG_DEFAULT_TEMPLATE}" "\e[37m" "\e[0m"
+    ${LOG_LEVEL_DEBUG}  "DEBUG"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;34m" "\e[0m"
+    ${LOG_LEVEL_TRACE}  "TRACE"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[94m" "\e[0m"
+)
+
+# Setup some B-Log variables
+B_LOG --file "$FILE_DOWNLOADED_HOOK_LOG" --stdout true --date-format '%Y/%m/%d %H:%M:%S'
+LOG_LEVEL_ALL
+
 FILENAME="$1"
+
+AMQP_SCRIPT=${AMQP_SCRIPT:-"/usr/bin/send-amqp-message"}
+GDRIVE_SCRIPT=${GDRIVE_SCRIPT:-"/usr/bin/upload-google-drive"}
+LDB=${LDB:-"/usr/local/bin/ldb"}
+LEVELDB_DB=${LEVELDB_DB:-"/data/filesdb"}
 BASE_FILENAME=`dirname "$FILENAME"`
+SHA1_FILEHASH=`sha1sum "$FILENAME" | cut -f1 -d' '`
+
+[ "$FILENAME" != "" ] || { FATAL "Must pass a filename.  Aborting."; exit 1; }
+[ -f "$FILENAME" ] || { FATAL "Filename does not exist '$FILENAME'.  Aborting."; exit 1; }
+
+# Make sure that our LevelDB exists
+[ `"$LDB" "${LEVELDB_DB}" --create --size` ] || { FATAL "Could not create LevelDB '$LEVELDB_DB'.  Aborting."; exit 1; }
+# Check if we have a filesize already for this file
+SAVED_FILESIZE=`"$LDB" "${LEVELDB_DB}" get "$SHA1_FILEHASH" 2>/dev/null`
 FILESIZE=`stat --printf="%s" "$FILENAME"`
 
-if [[ ! -f "$FILENAME" ]]; then
-  echo "File does not exist!"
-  echo "$FILENAME"
-  exit 1
-fi
+# If have a filesize and it matches our current filesize then skip
+[ "$FILESIZE" == "$SAVED_FILESIZE" ] && { NOTICE "File already sent '$BASE_FILENAME'.  Ignoring."; exit 0; }
+NOTICE "New file found: $BASE_FILENAME"
 
-"$LDB" "${LEVELDB_DB}" --create --size
-SAVED_FILESIZE=`"$LDB" "${LEVELDB_DB}" get "$BASE_FILENAME" 2>/dev/null`
-if [[ "$FILESIZE" == "$SAVED_FILESIZE" ]]; then
-  echo "File already sent. Skipping"
-  echo "$BASE_FILENAME"
-  exit 0
-fi
-
-echo "New file found: $FILENAME"
-
-MSG="local|${FILENAME}"
+METADATA=""
 if [[ "${RCLONE_UPLOAD}" == "true" ]]; then
   "$GDRIVE_SCRIPT" "$FILENAME" "$BASE_FILENAME"
-  MSG="google|${BASE_FILENAME}"
-  echo "File uploaded to Google Drive: $BASE_FILENAME"
+  METADATA='type=google_drive'
 fi
 
 if [[ "${AMQP_ENABLED}" == "true" ]]; then
-  #"$AMQP_SCRIPT" "$MSG"
-  echo "$AMQP_SCRIPT" "$MSG"
-  echo "File sent to AMQP queue"
+  "$AMQP_SCRIPT" "$MSG" "$METADATA"
 fi
 
-"$LDB" "${LEVELDB_DB}" put "$BASE_FILENAME" "$FILESIZE"
-echo "File Successfully Processed"
+"$LDB" "${LEVELDB_DB}" put "$SHA1_FILEHASH" "$FILESIZE"
