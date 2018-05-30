@@ -26,6 +26,7 @@ LOG_LEVEL_ALL
 FILENAME="$1"
 
 AMQP_SCRIPT=${AMQP_SCRIPT:-"/usr/local/bin/send-amqp-message"}
+KAFKA_SCRIPT=${KAFKA_SCRIPT:-"/usr/local/bin/send-kafka-message"}
 GDRIVE_SCRIPT=${GDRIVE_SCRIPT:-"/usr/local/bin/upload-google-drive"}
 LDB=${LDB:-"/usr/local/bin/ldb"}
 LEVELDB_DB=${LEVELDB_DB:-"/data/filesdb"}
@@ -57,6 +58,11 @@ fi
 if [[ "${AMQP_ENABLED}" == "true" ]]; then
   INFO "Sending message about file to AMQP"
   "${AMQP_SCRIPT}" "${FILENAME}" "${METADATA}"
+fi
+
+if [[ "${KAFKA_ENABLED}" == "true" ]]; then
+  INFO "Sending message about file to Kafka"
+  "${KAFKA_SCRIPT}" "${FILENAME}" "${METADATA}"
 fi
 
 "$LDB" "${LEVELDB_DB}" put "$SHA1_FILEHASH" "$FILESIZE"

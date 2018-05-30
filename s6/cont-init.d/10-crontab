@@ -1,0 +1,3 @@
+#!/usr/bin/with-contenv bash
+
+echo "${CRON_SCHEDULE} /usr/local/bin/sync-google-group" > /etc/crontab

@@ -1,9 +1,8 @@
-#!/bin/sh -e
+#!/usr/bin/with-contenv sh
 
 FILE_DOWNLOADED_HOOK="/usr/local/bin/file-downloaded-hook"
 
-exec 2>&1
-exec "/usr/bin/watchmedo" shell-command \
+"/usr/bin/watchmedo" shell-command \
     --patterns="${WATCH_FILE_PATTERN}" \
     --recursive \
     --command="${FILE_DOWNLOADED_HOOK} ${watch_src_path}" \

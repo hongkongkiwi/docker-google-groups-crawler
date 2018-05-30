@@ -1,0 +1,24 @@
+version: '3.5'
+services:
+  google-groups-crawler:
+    build: .
+    image: index.docker.io/hongkongkiwi/google-groups-crawler
+    restart: unless-stopped
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    environment:
+      GOOGLE_GROUP_NAME: "mygroup"
+      GOOGLE_GROUP_ORG: "spheroorg"
+      CRON_SCHEDULE: "*/30 * * * *"
+      UPDATE_MESSAGE_COUNT: 50
+      FORCE_REFRESH: false
+      DOWNLOAD_ATTACHMENTS: true
+      PULL_ON_BOOT: true
+      TZ: "Asia/Hong_Kong"
+      KAFKA_ENABLED: "true"
+      KAFKA_REST_URL: "http://kafka-rest:8082"
+      KAFKA_REST_TOPIC: "mytopic"
+      RCLONE_UPLOAD: "true"
+    volumes:
+      - ./google-groups-config:/config
+      - ./google-groups-data:/data

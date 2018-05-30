@@ -1,0 +1,203 @@
+.\" Generated with Ronnjs 0.4.0
+.\" http://github.com/kapouer/ronnjs
+.
+.TH "LDB" "1" "December 2016" "" ""
+.
+.SH "NAME"
+\fBldb\fR \-\- leveldb instance manager\.
+.
+.SH "SYNOPSIS"
+  \fBldb\fR pathname [options]
+.
+.SH "DESCRIPTION"
+  \fBldb\fR allows you to explore, manage and create leveldb instances from a
+  repl, the commandline or a script\.
+.
+.SH "OPTIONS"
+  \fB\-h \-\-help\fR
+  Show this screen\.
+.
+.P
+  \fB\-\-create\fR
+  Create the database if it does not exist\.
+.
+.P
+  \fB\-\-error\fR
+  Throw an error if the databse does not exist\.
+.
+.P
+  \fB\-\-size\fR
+  Get the size of the current range\.
+.
+.P
+  \fB\-\-nocompress\fR
+  Do not use compression\.
+.
+.P
+  \fB\-\-version\fR
+  Show version\.
+.
+.SH "EXAMPLES"
+  Open an existing database with interactive mode (REPL) and create the
+  database if it does not exist with optional flag \fB\-\-create\fR:
+.
+.P
+  \fB
+  $ ldb \./testdb \-\-create
+  \fR
+.
+.P
+  Insert a key/value pair:
+  \fB
+  $ ldb \./db put foo bar
+  \fR
+.
+.P
+  Get a value:
+  \fB
+  $ ldb \./db get foo
+  \fR
+.
+.P
+  Delete a value:
+  \fB
+  $ ldb \./db del foo
+  \fR
+.
+.P
+  List all keys in the database:
+  \fB
+  $ ldb \./db keys
+  \fR
+.
+.P
+  List the ten first keys in the database:
+  \fB
+  $ ldb \./db keys \-\-limit=10
+  \fR
+.
+.P
+  List all keys starting with \fBfoo\fR:
+  \fB
+  $ ldb \./db keys \-\-start=foo
+  \fR
+.
+.P
+  List all keys up to (not including) \fBbar\fR:
+  \fB
+  $ ldb \./db keys \-\-end=bar
+  \fR
+.
+.P
+  Obviously you can do combinations:
+  \fB
+  $ ldb \./db keys \-\-start=foo \-\-end=bar \-\-limit=5
+  \fR
+.
+.SH "KEY AUTO\-COMPLETE"
+  \fBldb\fR will get the first n (as defined in \fBLIMIT\fR) records and make them available
+  for autocomplete\. If the limit is redefined, the cache will be refreshed to reflect the
+  new range\.
+.
+.P
+  When possible, hitting tab will allow you to cycle though keys that match your partial
+  input\. Also, if there is a partial match it will be highlighted in the results\.
+.
+.SH "REPL COMMANDS"
+  You can \fBget\fR, \fBput\fR or \fBdel\fR a single key at any time\. Many of the following commands
+  help you to create ranges so that you can casually explore smaller sets of data\.
+.
+.P
+  Get a key\'s value:
+.
+.P
+  \fB
+  >get foo
+  \fR
+.
+.P
+  Put a value to a key:
+.
+.P
+  \fB
+  >put foo 100
+  \fR
+.
+.P
+  List the keys in the curent range:
+.
+.P
+  \fB
+  >ls
+  \fR
+.
+.P
+  Set the start of the current range:
+.
+.P
+  \fB
+  >start <string>
+  \fR
+.
+.P
+  Set the end of the current range:
+.
+.P
+  \fB
+  >end <string>
+  \fR
+.
+.P
+  Set the limit for the current range:
+.
+.P
+  \fB
+  >limit <number>
+  \fR
+.
+.P
+  Get the size of the the current range (in bytes):
+.
+.P
+  \fB
+  >size
+  \fR
+.
+.SH "AUTHOR"
+.
+.IP "\(bu" 4
+Paolo Fragomeni \fI<paolo@async\.ly\fR>
+.
+.IP "\(bu" 4
+Lars\-Magnus Skog \fI<ralphtheninja@riseup\.net\fR>
+.
+.IP "\(bu" 4
+Joseph Werle \fI<joseph\.werle@gmail\.com\fR>
+.
+.IP "" 0
+.
+.SH "REPORTING BUGS"
+.
+.IP "\(bu" 4
+\fIhttps://github\.com/0x00a/ldb/issues\fR
+.
+.IP "" 0
+.
+.SH "SEE ALSO"
+.
+.IP "\(bu" 4
+\fIhttps://github\.com/google/leveldb\fR
+.
+.IP "\(bu" 4
+\fIhttps://github\.com/0x00a/lev\fR
+.
+.IP "\(bu" 4
+\fIhttps://github\.com/antirez/linenoise\fR
+.
+.IP "\(bu" 4
+\fIhttps://github\.com/docopt/docopt\.cpp\fR
+.
+.IP "" 0
+.
+.SH "LICENSE"
+Distributed with the MIT license\.

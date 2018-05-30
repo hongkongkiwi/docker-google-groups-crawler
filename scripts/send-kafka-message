@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+# global parameters
+set -o pipefail # prevents errors in a pipeline from being masked
+
+KAFKA_PRODUCE_LOG=${KAFKA_PRODUCE_LOG:-"/var/log/kafka-produce.log"}
+
+# Import the BLOG library
+[ -f "$BLOG" ] && source "$BLOG" || { echo "I require b-log.sh but it's not found.  Aborting."; exit 1; }
+# Here we are matching the BLOG format to match the format of rclone
+B_LOG_DEFAULT_TEMPLATE="@19:1@ @6:2@ : @5@"
+LOG_LEVELS=(
+    ${LOG_LEVEL_FATAL}  "FATAL"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[41;37m" "\e[0m"
+    ${LOG_LEVEL_ERROR}  "ERROR"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;31m" "\e[0m"
+    ${LOG_LEVEL_WARN}   "WARN"   "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;33m" "\e[0m"
+    ${LOG_LEVEL_NOTICE} "NOTICE" "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;32m" "\e[0m"
+    ${LOG_LEVEL_INFO}   "INFO"   "${B_LOG_DEFAULT_TEMPLATE}" "\e[37m" "\e[0m"
+    ${LOG_LEVEL_DEBUG}  "DEBUG"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[1;34m" "\e[0m"
+    ${LOG_LEVEL_TRACE}  "TRACE"  "${B_LOG_DEFAULT_TEMPLATE}" "\e[94m" "\e[0m"
+)
+
+# Setup some B-Log variables
+B_LOG --file "$KAFKA_PRODUCE_LOG" --stdout true --date-format '%Y/%m/%d %H:%M:%S'
+LOG_LEVEL_ALL
+
+# Check if the commands are installed
+command -v "curl" >/dev/null 2>&1 || { FATAL "I require curl but it's not installed.  Aborting."; exit 1; }
+
+[ "$KAFKA_ENABLED" == "true" ] || { ERROR "KAFKA_ENABLED is not equal to true.  Aborting."; exit 1; }
+
+FILENAME="$1"
+METADATA="$2"
+[ "$FILENAME" != "" ] || { FATAL "Must pass a filename.  Aborting."; exit 1; }
+[ -f "$FILENAME" ] || { FATAL "Filename does not exist '$FILENAME'.  Aborting."; exit 1; }
+
+KV_STRING=""
+if [[ "$METADATA" != "" ]]; then
+  for KEY_VALUE in ${METADATA//,/ }; do
+    KEY=`echo "$KEY_VALUE" | cut -f1 -d'='`
+    VALUE=`echo "$KEY_VALUE" | cut -f2 -d'='`
+    KV="\"${KEY}\":\"${VALUE}\""
+    KV_STRING="${KV_STRING},${KV}"
+  done
+fi
+
+BODY_MSG="{\"filename\":\"${FILENAME}\"${KV_STRING}}"
+
+# This is a complicated one liner to extract the host and port from a URL
+# AMQP_EXTRACT=`echo "$AMQP_URL" | python -c "import re; s = '${AMQP_URL}'; m = re.search(r'^((?P<scheme>[^:/?#]+):(?=//))?(//)?(((?P<login>[^:]+)(?::(?P<password>[^@]+)?)?@)?(?P<host>[^@/?#:]*)(?::(?P<port>\d+)?)?)?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?', s); host = m.group('host') if m.group('host') else ''; port = m.group('port') if m.group('port') else ''; print(host + ':' + port)"`
+# AMQP_HOST=`echo "$AMQP_EXTRACT" | cut -f1 -d':'`
+# AMQP_PORT=`echo "$AMQP_EXTRACT" | cut -f2 -d':'`
+# AMQP_PORT=${AMQP_PORT:-5672}
+# AMQP_HOST_PORT_TIMEOUT_SECS=2
+
+KAFKA_REST_URL=${KAFKA_REST_URL:-"http://kafka-rest:8082"}
+KAFKA_TOPIC=${KAFKA_TOPIC:-"production-reports"}
+
+curl -X POST \
+    -H "Content-Type: application/vnd.kafka.json.v2+json" \
+    -H "Accept: application/vnd.kafka.v2+json" \
+    --data "$JSON" \
+    "${KAFKA_REST_URL}/topics/${KAFKA_TOPIC}" && \
+NOTICE "Successfully sent Kafka message. Topic='${KAFKA_TOPIC}', Body='${BODY_MSG}'" || \
+ERROR "Failed to send Kafka message!"

@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv sh
+
+CRONTAB="/etc/crontab"
+
+"/usr/local/bin/supercronic" "$CRONTAB"

@@ -7,30 +7,26 @@ LABEL org.label-schema.name="google-group-crawler" \
       org.label-schema.vcs-url="https://github.com/hongkongkiwi/google-group-crawler" \
       org.label-schema.license="MIT"
 
-# This is some stuff required for runit to work
-STOPSIGNAL SIGCONT
-
-ARG SERVICE_AVAILABLE_DIR="/etc/sv"
-ARG SERVICE_ENABLED_DIR="/service"
-ARG SVDIR="${SERVICE_ENABLED_DIR}"
-ARG SVWAIT=7
-
 ARG OS="linux"
 ARG ARCH="amd64"
 
 # URLS for stuff to install during build
 ARG SUPERCRONIC_VER="0.1.5"
 ARG SUPERCRONIC_URL="https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VER}/supercronic-${OS}-${ARCH}"
-ARG SUPERCRONIC="supercronic-${OS}-${ARCH}"
 ARG SUPERCRONIC_SHA1SUM='9aeb41e00cc7b71d30d33c57a2333f2c2581a201'
-ARG RUNIT_INSTALL_SCRIPT='https://rawgit.com/dockage/runit-scripts/master/scripts/installer'
-ARG GOOGLE_CRAWLER_REPO='https://github.com/icy/google-group-crawler.git'
-ARG QUICK_LOCK_REPO='https://raw.githubusercontent.com/oresoftware/quicklock/master/install.sh'
-    #QUICK_LOCK_REPO='https://raw.githubusercontent.com/hongkongkiwi/quicklock/master/install.sh'
+
+ARG S6_OVERLAY_VERSION="1.21.4.0"
+ARG S6_OVERLAY_URL="https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${ARCH}.tar.gz"
+
+ARG GOOGLE_CRAWLER_VERSION="1.2.1"
+ARG GOOGLE_CRAWLER_URL="https://github.com/icy/google-group-crawler/archive/v${GOOGLE_CRAWLER_VERSION}.tar.gz"
+
+# ARG QUICK_LOCK_REPO='https://raw.githubusercontent.com/oresoftware/quicklock/master/install.sh'
+
 ARG RCLONE_VER="current"
 ARG RCLONE_URL="https://downloads.rclone.org/rclone-${RCLONE_VER}-${OS}-${ARCH}.zip"
-ARG LEVELDB_REPO='https://github.com/0x00a/ldb.git'
-ARG BLOG_URL='https://raw.githubusercontent.com/idelsink/b-log/master/b-log.sh'
+
+# ARG BLOG_URL='https://raw.githubusercontent.com/idelsink/b-log/master/b-log.sh'
 
 # Some options that can be configured
 ENV CRON_SCHEDULE='*/30 * * * *'
@@ -58,7 +54,7 @@ ENV TZ='Asia/Hong_Kong'
 ENV NPM_CONFIG_LOGLEVEL='error'
 
 # Upload files we find to rclone remote (e.g. Google Groups)
-ENV RCLONE_UPLOAD='true'
+ENV RCLONE_UPLOAD='false'
 # Which rclone remote to upload to
 ENV RCLONE_REMOTE='Google Drive'
 
@@ -69,10 +65,25 @@ ENV AMQP_URL=''
 ENV AMQP_EXCHANGE='google_groups'
 ENV AMQP_QUEUE='google_groups_changes'
 
+# Send files found to Kafka Rest server?
+ENV KAFKA_ENABLED='false'
+# Kafka Rest Server info
+ENV KAFKA_REST_URL='http://kafka-rest:8082'
+ENV KAFKA_REST_TOPIC='production-reports'
+
+ENV PGID=1001 \
+    PUID=1001
+
+ENV PS1="$(whoami)@$(hostname):$(pwd)\$ " \
+    HOME="/root" \
+    TERM="xterm" \
+    PATH="${PATH}:/usr/local/bin:/usr/local/sbin"
+
 # Path to Python (required for some NPM builds)
 ENV PYTHON="/usr/bin/python"
 # Path to b-log.sh which is downloaded for bash logging
 ENV BLOG="/usr/local/include/b-log.sh"
+ENV SUPERCRONIC="/usr/local/bin/supercronic"
 
 VOLUME ["/data", "/config"]
 
@@ -86,25 +97,22 @@ COPY scripts/* /usr/local/bin/
 RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
  && echo "@edgetesting http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
  && echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
- # Add community repo
+ # Add community repo \
  && apk update \
  && apk add --upgrade apk-tools@edge \
- # Install these as a group so they are easy to remove
+ # make g++ snappy-dev gcc cmake@edge \
+ # unzip \
+ # git \ \
+ #  && apk add cmake@edge \
+ # netcat-openbsd \
+ # Install these as a group so they are easy to remove \
  && apk add --no-cache --virtual .build-dependencies \
-        cmake@edge \
-        unzip \
-        curl \
-        git \
         tzdata \
         py2-pip \
-        make g++ snappy-dev gcc \
- && apk add cmake@edge \
  && apk add --no-cache \
-        netcat-openbsd \
+        curl \
         snappy \
-        runit \
         ca-certificates \
-        tini \
         bash gawk sed grep wget coreutils procps \
         rabbitmq-c-utils \
         python3 \
@@ -113,28 +121,46 @@ RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >>
         yaml-dev \
         musl-dev \
         ripmime@edgecommunity \
+ && mkdir -p \
+      "/usr/local/include" \
+      "/usr/local/bin" \
+      "/usr/local/sbin" \
+      "/usr/share/man/man1" \
+      "/tmp" \
+      "/var/log/supercronic" \
+      "/var/log/watchdog"
+
 # Set the time
- && echo "Setting Time Zone" \
+RUN echo "Setting Time Zone" \
  && cp "/usr/share/zoneinfo/${TZ}" /etc/localtime \
  && echo "${TZ}" > /etc/timezone
 
-# install supercronic
-# (from https://github.com/aptible/supercronic/releases)
-RUN echo "Installing Supercronic" \
- && curl -fsSLO "$SUPERCRONIC_URL" \
- && echo "${SUPERCRONIC_SHA1SUM} ${SUPERCRONIC}" | sha1sum -c - \
- && chmod +x "$SUPERCRONIC" \
- && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
- && ln -s "/usr/local/bin/${SUPERCRONIC}" "/usr/local/bin/supercronic"
+RUN echo "Adding User/Group" \
+ && addgroup -g ${PGID} abc \
+ && adduser -D -u ${PUID} -G abc abc
+
+# Installing Logging Libraries
+ADD "$SUPERCRONIC_URL" "$SUPERCRONIC"
+ADD "$S6_OVERLAY_URL" "/tmp/s6-overlay-${ARCH}.tar.gz"
+COPY ldb/manpages/ldb.1 /usr/share/man/man1
+COPY ldb/bin/ldb /usr/local/bin/ldb
+COPY blog/b-log.sh "${BLOG}"
+COPY quicklock/install.sh /tmp/qlinstall.sh
+COPY s6/ /etc
+RUN bash "/tmp/qlinstall.sh" \
+ && echo "Verifying Supercronic" \
+ && echo "${SUPERCRONIC_SHA1SUM} /usr/local/bin/supercronic" | sha1sum -c - \
+ && echo "Extracting S6 Overlay" \
+ && tar xzf "/tmp/s6-overlay-${ARCH}.tar.gz" -C /
 
 # Download Google Group Crawler bash scripts
+
+ADD "${GOOGLE_CRAWLER_URL}" "/tmp/google-group-crawler.tar.gz"
 RUN echo "Installing Google Group Crawler" \
  && ([ -d /google-group-crawler ] && rm -Rf /google-group-crawler || true) \
- && git clone -q "${GOOGLE_CRAWLER_REPO}" /google-group-crawler
-
-# Install One Lock scripts
-RUN echo "Installing Quicklook Repo" \
- && curl -o- "${QUICK_LOCK_REPO}" | bash
+ && mkdir -p /google-group-crawler \
+ && tar xzf "/tmp/google-group-crawler.tar.gz" -C /google-group-crawler
+COPY hook.sh "$HOOK_FILE"
 
 # Upgrade PIP
 RUN echo "Upgrading Pip & Installing Watchdog" \
@@ -142,58 +168,25 @@ RUN echo "Upgrading Pip & Installing Watchdog" \
  && pip3 install -q --no-cache-dir watchdog \
  && pip2 install -q --no-cache-dir crudini
 
- # Install Runit
-RUN echo "Installing Runit" \
- && cd / \
- && curl --output /runit_installer -fsSLO "$RUNIT_INSTALL_SCRIPT" \
- && mkdir -p "${SERVICE_AVAILABLE_DIR}" "${SERVICE_ENABLED_DIR}" \
- && chmod +x /runit_installer \
- && /runit_installer \
- && cd /data
-COPY runit/ "${SERVICE_AVAILABLE_DIR}/"
-RUN ln -s "${SERVICE_AVAILABLE_DIR}/supercronic" "${SERVICE_ENABLED_DIR}" \
- && ln -s "${SERVICE_AVAILABLE_DIR}/watchdog" "${SERVICE_ENABLED_DIR}" \
- && ln -s "${SERVICE_AVAILABLE_DIR}/sync-google-group-oneshot" "${SERVICE_ENABLED_DIR}" \
- && mkdir -p "/var/log/supercronic" "/var/log/watchdog"
-
 # Install rclone
 RUN echo "Installing rclone" \
- && mkdir -p /tmp \
  && cd /tmp \
  && wget -q "${RCLONE_URL}" \
  && unzip -qq /tmp/rclone-*.zip \
  && mv /tmp/rclone-*-${OS}-*/rclone /usr/local/bin \
  && mkdir -p /var/lock \
- && touch /var/lock/rclone.lock \
- && cd /data
-
-# LevelDB for Shell
-RUN echo "Installing LevelDB" \
- && mkdir -p "/usr/share/man/man1" \
- && git clone -q "${LEVELDB_REPO}" /tmp/ldb \
- && cd /tmp/ldb \
- && make && make install
-
-# Installing Logging Libraries
-RUN echo "Installing Additional Shell Libraries" \
- && mkdir -p "/usr/local/include" \
- && wget -q -O "${BLOG}" "${BLOG_URL}"
-
-# Create expected directories
-RUN echo "Setting Things Up" \
- && chmod +x /usr/local/bin/* \
- && echo "${CRON_SCHEDULE} /usr/local/bin/sync-google-group" > /etc/crontab
+ && touch /var/lock/rclone.lock
 
 # clean up dependencies
 RUN echo "Cleaning Up" \
+ && chmod -R +x /usr/local/bin /usr/sbin /usr/local/sbin \
  && apk del --purge .build-dependencies \
- && rm -rf /var/cache/apk/* \
- && rm -rf /tmp/* /var/tmp/* \
- && rm -rf ~/.cache/pip \
- && rm -rf /runit_installer /dockage-runit-scripts-*
-
-COPY hook.sh "$HOOK_FILE"
+ && rm -rf \
+      /tmp/* \
+      /var/tmp/* \
+      /var/cache/apk/* \
+      ~/.cache/pip
 
 WORKDIR /data
 
-ENTRYPOINT ["/sbin/runit-init"]
+ENTRYPOINT ["/init"]
