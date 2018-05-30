@@ -87,19 +87,21 @@ ENV SUPERCRONIC="/usr/local/bin/supercronic"
 
 VOLUME ["/data", "/config"]
 
-# We need to set work directory as this is where the crawler will save the data
-WORKDIR /data
-
 # Copy all our awesome scripts to the bin
 COPY scripts/* /usr/local/bin/
+COPY ldb/manpages/ldb.1 /usr/share/man/man1
+COPY ldb/bin/ldb /usr/local/bin/ldb
+COPY blog/b-log.sh "${BLOG}"
+COPY quicklock/install.sh /tmp/qlinstall.sh
+COPY s6/ /etc
 
 # install dependencies
 RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
- && echo "@edgetesting http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
- && echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
+ #&& echo "@edgetesting http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
+ #&& echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
  # Add community repo \
  && apk update \
- && apk add --upgrade apk-tools@edge \
+ #&& apk add --upgrade apk-tools@edge \
  # make g++ snappy-dev gcc cmake@edge \
  # unzip \
  # git \ \
@@ -125,10 +127,11 @@ RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >>
       "/usr/local/include" \
       "/usr/local/bin" \
       "/usr/local/sbin" \
-      "/usr/share/man/man1" \
       "/tmp" \
       "/var/log/supercronic" \
       "/var/log/watchdog"
+
+RUN mkdir -p "/usr/share/man/man1" >/dev/null 2>&1 || true
 
 # Set the time
 RUN echo "Setting Time Zone" \
@@ -142,11 +145,6 @@ RUN echo "Adding User/Group" \
 # Installing Logging Libraries
 ADD "$SUPERCRONIC_URL" "$SUPERCRONIC"
 ADD "$S6_OVERLAY_URL" "/tmp/s6-overlay-${ARCH}.tar.gz"
-COPY ldb/manpages/ldb.1 /usr/share/man/man1
-COPY ldb/bin/ldb /usr/local/bin/ldb
-COPY blog/b-log.sh "${BLOG}"
-COPY quicklock/install.sh /tmp/qlinstall.sh
-COPY s6/ /etc
 RUN bash "/tmp/qlinstall.sh" \
  && echo "Verifying Supercronic" \
  && echo "${SUPERCRONIC_SHA1SUM} /usr/local/bin/supercronic" | sha1sum -c - \
