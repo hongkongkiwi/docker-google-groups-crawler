@@ -6,12 +6,10 @@ google-groups-config/*
 google-groups-data/*
 test.log
 test.sh
-b-log.sh
 buildtest.sh
 data/*
 config/*
 .vagrant*
-bin
 docker/docker
 .*.swp
 a.out
