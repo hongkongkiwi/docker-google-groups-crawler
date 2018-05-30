@@ -1,1 +1,1 @@
-/var/log true abc:abc,32768:32768 0640 0740
+/var/log true abc:abc,32768:32768 0640 0755
