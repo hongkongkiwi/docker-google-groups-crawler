@@ -11,9 +11,9 @@ services:
       GOOGLE_GROUP_ORG: "spheroorg"
       CRON_SCHEDULE: "*/30 * * * *"
       UPDATE_MESSAGE_COUNT: 50
-      FORCE_REFRESH: false
-      DOWNLOAD_ATTACHMENTS: true
-      PULL_ON_BOOT: true
+      FORCE_REFRESH: "false"
+      DOWNLOAD_ATTACHMENTS: "true"
+      PULL_ON_BOOT: "true"
       TZ: "Asia/Hong_Kong"
       KAFKA_ENABLED: "true"
       KAFKA_REST_URL: "http://kafka-rest:8082"
