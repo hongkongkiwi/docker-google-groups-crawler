@@ -112,6 +112,7 @@ RUN echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >>
         tzdata \
         py2-pip \
  && apk add --no-cache \
+        shadow \
         curl \
         snappy \
         ca-certificates \
@@ -140,7 +141,9 @@ RUN echo "Setting Time Zone" \
 
 RUN echo "Adding User/Group" \
  && addgroup -g ${PGID} abc \
- && adduser -D -u ${PUID} -G abc abc
+ && adduser -D -u ${PUID} -G abc abc \
+ && usermod -G users abc
+# && adduser -D -u 32768 -G abc nobody
 
 # Installing Logging Libraries
 ADD "$SUPERCRONIC_URL" "$SUPERCRONIC"

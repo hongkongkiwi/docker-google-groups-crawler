@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bash
+
+[ -d "/data/${GOOGLE_GROUP_NAME}" ] || \
+  mkdir -p "/data/${GOOGLE_GROUP_NAME}"

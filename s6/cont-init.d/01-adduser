@@ -17,4 +17,5 @@ User gid:    $(id -g abc)
 "
 chown abc:abc /google-group-crawler
 chown abc:abc /data
-chown abc:abc /usr/
+chown abc:abc /usr/local/bin
+chown abc:abc /usr/local/include

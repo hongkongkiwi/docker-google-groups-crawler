@@ -1,5 +1,8 @@
-#!/usr/bin/with-contenv sh
+#!/usr/bin/with-contenv bash
 
 CRONTAB="/etc/crontab"
 
-"/usr/local/bin/supercronic" "$CRONTAB"
+exec \
+  s6-setuidgid abc \
+    "/usr/local/bin/supercronic" \
+    "$CRONTAB"

@@ -2,8 +2,10 @@
 
 FILE_DOWNLOADED_HOOK="/usr/local/bin/file-downloaded-hook"
 
-"/usr/bin/watchmedo" shell-command \
-    --patterns="${WATCH_FILE_PATTERN}" \
-    --recursive \
-    --command="${FILE_DOWNLOADED_HOOK} ${watch_src_path}" \
-    "/data/${GOOGLE_GROUP_NAME}"
+exec \
+  s6-setuidgid abc \
+    "/usr/bin/watchmedo" shell-command \
+      --patterns="${WATCH_FILE_PATTERN}" \
+      --recursive \
+      --command="${FILE_DOWNLOADED_HOOK} ${watch_src_path}" \
+      "/data/${GOOGLE_GROUP_NAME}"
