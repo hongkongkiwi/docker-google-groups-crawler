@@ -1,1 +1,3 @@
+/var/log/supercronic true abc:abc 0644 2700
+/var/log/watchdog true abc:abc 0644 2700
 /var/log true abc:abc 0644 0755
